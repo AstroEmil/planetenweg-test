@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR-Codes – Planetenweg</title>
+<script src="planeten.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+  /* Bildschirm: kurze Erklärung + Vorschau der Karten. Druck: nur die Karten, 2 × 3 pro A4-Seite */
+  :root { --text: #111827; --leise: #5b6475; --linie: #c9ced8; --akzent: #b7791f; --bg: #ffffff; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .kopf { max-width: 760px; margin: 0 auto; padding: 16px; display: grid; gap: 8px; }
+  .kopf h1 { margin: 0; font-size: 1.4rem; }
+  .kopf p { margin: 0; color: var(--leise); line-height: 1.45; }
+  .kopf button { justify-self: start; font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 999px;
+                 border: 0; background: var(--akzent); color: #fff; cursor: pointer; }
+  .fehler { background: #fde8e8; border: 1px solid #e0a3a3; border-radius: 8px; padding: 10px 12px; }
+  .karten { display: grid; grid-template-columns: repeat(2, 9cm); gap: 0.6cm; justify-content: center; padding: 16px; }
+  .karte { width: 9cm; height: 8.5cm; box-sizing: border-box; border: 1px dashed var(--linie); border-radius: 6px;
+           display: grid; justify-items: center; align-content: center; gap: 0.25cm; break-inside: avoid; }
+  .karte .klein { font-size: 9pt; color: var(--leise); letter-spacing: .08em; text-transform: uppercase; }
+  .karte .name { font-size: 20pt; font-weight: 700; }
+  .karte svg { width: 5cm; height: 5cm; }
+  .karte .adresse { font-size: 7pt; color: var(--leise); word-break: break-all; text-align: center; padding: 0 0.4cm; }
+  @media (max-width: 20cm) { .karten { grid-template-columns: 9cm; } }
+  @media print {
+    .kopf { display: none; }
+    .karten { grid-template-columns: repeat(2, 9cm); padding: 0; gap: 0.5cm 0.6cm; }
+    @page { size: A4; margin: 1.2cm; }
+  }
+</style>
+</head>
+<body>
+  <div class="kopf">
+    <h1>QR-Codes für den Planetenweg</h1>
+    <p>Die Codes werden automatisch aus der Adresse dieser Seite erzeugt. Jeder Code öffnet genau eine Station.
+       Bitte vor dem Drucken einen Code mit dem Handy testen.</p>
+    <div class="fehler" id="fehler" hidden></div>
+    <button type="button" onclick="window.print()">Drucken</button>
+  </div>
+  <div class="karten" id="karten"></div>
+
+<script>
+  const fehler = document.getElementById('fehler');
+  const basis = new URL('./', location.href).href;          // z. B. https://name.github.io/planetenweg-test/
+
+  if (location.protocol === 'file:') {
+    fehler.innerHTML = '<strong>Diese Seite bitte über GitHub Pages öffnen.</strong> Sonst enthalten die QR-Codes eine Adresse auf Ihrem PC, die kein Handy erreicht.';
+    fehler.hidden = false;
+  } else if (typeof qrcode !== 'function') {
+    fehler.innerHTML = '<strong>QR-Erzeugung nicht geladen.</strong> Besteht eine Internetverbindung?';
+    fehler.hidden = false;
+  } else {
+    const ziel = document.getElementById('karten');
+    PLANETEN.forEach(p => {
+      const adresse = `${basis}#${p.id}`;
+      const qr = qrcode(0, 'Q');                 // Fehlerkorrektur Q: lesbar trotz Kratzern und Laminierfolie
+      qr.addData(adresse);
+      qr.make();
+      const n = qr.getModuleCount(), rand = 4;   // 4 Module weißer Rand (Ruhezone)
+      let pfad = '';
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) pfad += `M${c + rand} ${r + rand}h1v1h-1z`;
+      const svg = `<svg viewBox="0 0 ${n + 2 * rand} ${n + 2 * rand}" shape-rendering="crispEdges" role="img" aria-label="QR-Code ${p.name}">` +
+                  `<rect width="100%" height="100%" fill="#fff"/><path d="${pfad}" fill="#000"/></svg>`;
+      const karte = document.createElement('div');
+      karte.className = 'karte';
+      karte.innerHTML = `<div class="klein">Planetenweg · Station</div>
+        <div class="name">${p.name}</div>
+        ${svg}
+        <div class="adresse">${adresse}</div>`;
+      ziel.appendChild(karte);
+    });
+  }
+</script>
+</body>
+</html>
