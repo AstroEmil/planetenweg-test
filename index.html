@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planetenweg-Modelltest</title>
+</head>
+<body>
+<!-- 3D-Anzeige (model-viewer, Version 4.1.0) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+
+<style>
+  /* Layout: eine Spalte – Auswahl oben, Bühne mit dem Planeten, Steckbrief-Zeile darunter */
+  :root {
+    --himmel: #0a0d16;        /* Hintergrund */
+    --flaeche: #141a28;       /* Bühne, Knöpfe */
+    --linie: #2a3348;         /* Rahmen */
+    --text: #e9edf5;
+    --leise: #95a0b4;
+    --akzent: #f2c46d;        /* Sonnengelb: aktive Auswahl, Jupiter-Umriss */
+    --fehler-bg: #45191c;
+    --fehler-rand: #c45a5f;
+    --schrift: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color-scheme: dark;
+  }
+  body { margin: 0; background: var(--himmel); color: var(--text); font-family: var(--schrift); }
+  main {
+    max-width: 760px; margin: 0 auto;
+    padding-block: 16px 32px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid; gap: 14px;
+  }
+  .kopf { display: grid; gap: 2px; }
+  .kopf small { color: var(--leise); letter-spacing: .08em; text-transform: uppercase; font-size: .75rem; }
+  h1 { margin: 0; font-size: 1.45rem; text-wrap: balance; }
+
+  .planeten { display: flex; flex-wrap: wrap; gap: 6px; }
+  .planeten button, .modus button {
+    font: inherit; font-size: .92rem; color: var(--text); background: var(--flaeche);
+    border: 1px solid var(--linie); border-radius: 999px; padding: 6px 12px; cursor: pointer;
+  }
+  .planeten button[aria-pressed="true"] { border-color: var(--akzent); color: var(--akzent); }
+  .modus { display: inline-flex; border: 1px solid var(--linie); border-radius: 999px; padding: 3px; gap: 3px; justify-self: start; background: var(--flaeche); }
+  .modus button { border: 0; background: transparent; }
+  .modus button[aria-pressed="true"] { background: var(--akzent); color: var(--himmel); font-weight: 600; }
+  button:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+
+  .buehne { position: relative; border: 1px solid var(--linie); border-radius: 14px; overflow: hidden; background: var(--himmel); }
+  model-viewer { display: block; width: 100%; height: 64vh; min-height: 320px; max-height: 640px; background: var(--himmel); }
+  .umriss {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    border: 1.5px dashed var(--akzent); border-radius: 50%; pointer-events: none; opacity: .75;
+  }
+  .umriss span {
+    position: absolute; left: 50%; top: -1.6em; transform: translateX(-50%);
+    color: var(--akzent); font-size: .8rem; white-space: nowrap;
+  }
+
+  .daten { color: var(--leise); font-size: .95rem; font-variant-numeric: tabular-nums; margin: 0; }
+  .daten strong { color: var(--text); font-weight: 600; }
+  .fehler { background: var(--fehler-bg); border: 1px solid var(--fehler-rand); border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
+  .fuss { color: var(--leise); font-size: .8rem; margin: 0; }
+</style>
+
+<main>
+  <header class="kopf">
+    <small>Planetenweg</small>
+    <h1>Modelltest</h1>
+  </header>
+
+  <div class="planeten" id="planeten" aria-label="Planet auswählen"></div>
+
+  <div class="modus" role="group" aria-label="Darstellung">
+    <button type="button" id="btn-normiert" aria-pressed="true">Normiert</button>
+    <button type="button" id="btn-vergleich" aria-pressed="false">Größenvergleich</button>
+  </div>
+
+  <div class="fehler" id="fehler" hidden></div>
+
+  <div class="buehne">
+    <model-viewer id="viewer"
+      alt="3D-Modell des ausgewählten Planeten"
+      camera-controls disable-zoom disable-pan touch-action="pan-y"
+      interaction-prompt="auto" environment-image="neutral" shadow-intensity="0"
+      min-camera-orbit="-Infinity 22.5deg 0m" max-camera-orbit="Infinity 157.5deg 2000m"
+      min-field-of-view="10deg" max-field-of-view="45deg">
+    </model-viewer>
+    <div class="umriss" id="umriss" hidden><span id="umriss-text">Jupiter</span></div>
+  </div>
+
+  <p class="daten" id="daten"></p>
+  <p class="fuss">Zum Drehen wischen oder mit der Maus ziehen. Durchmesser: NASA Planetary Fact Sheet.</p>
+</main>
+
+<script>
+  // ============ HIER ANPASSEN ============
+  // Dateiname im Ordner "modelle" und Äquatordurchmesser in km.
+  const PLANETEN = [
+    { name: 'Merkur',  datei: 'modelle/merkur.glb',  durchmesser: 4879 },
+    { name: 'Venus',   datei: 'modelle/venus.glb',   durchmesser: 12104 },
+    { name: 'Erde',    datei: 'modelle/erde.glb',    durchmesser: 12756 },
+    { name: 'Mars',    datei: 'modelle/mars.glb',    durchmesser: 6792 },
+    { name: 'Jupiter', datei: 'modelle/jupiter.glb', durchmesser: 142984 },
+    { name: 'Saturn',  datei: 'modelle/saturn.glb',  durchmesser: 120536 },
+    { name: 'Uranus',  datei: 'modelle/uranus.glb',  durchmesser: 51118 },
+    { name: 'Neptun',  datei: 'modelle/neptun.glb',  durchmesser: 49528 },
+  ];
+  const REFERENZ = 'Jupiter';   // Bezugsgröße im Größenvergleich (größter Planet)
+  const START = 'Erde';         // Planet, der beim Öffnen gezeigt wird
+  // =======================================
+
+  const RAHMEN = 2.1;   // sichtbarer Bereich im Größenvergleich, in Jupiter-Radien (Platz für Saturnringe)
+  const FOV = 30;       // fester Bildwinkel im Größenvergleich (Grad)
+
+  const mv = document.getElementById('viewer');
+  const umriss = document.getElementById('umriss');
+  const fehler = document.getElementById('fehler');
+  const ref = PLANETEN.find(p => p.name === REFERENZ);
+  const erde = PLANETEN.find(p => p.name === 'Erde');
+  const zahl = (x, n) => x.toLocaleString('de-DE', { minimumFractionDigits: n, maximumFractionDigits: n });
+  let index = Math.max(0, PLANETEN.findIndex(p => p.name === START));
+  let modus = 'normiert';
+  let mass = null;      // gemessene Größe des geladenen Modells
+
+  const zeigeFehler = (html) => { fehler.innerHTML = html; fehler.hidden = false; };
+
+  // Knöpfe für die Planeten
+  const leiste = document.getElementById('planeten');
+  PLANETEN.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = p.name;
+    b.addEventListener('click', () => zeigePlanet(i));
+    leiste.appendChild(b);
+  });
+
+  function zeigePlanet(i) {
+    index = i; mass = null; fehler.hidden = true; umriss.hidden = true;
+    [...leiste.children].forEach((b, k) => b.setAttribute('aria-pressed', k === i));
+    mv.setAttribute('scale', '1 1 1');          // erst unverändert laden und messen
+    mv.setAttribute('camera-target', 'auto auto auto');
+    mv.setAttribute('field-of-view', 'auto');
+    mv.setAttribute('camera-orbit', '0deg 75deg auto');
+    mv.setAttribute('src', PLANETEN[i].datei);   // setAttribute statt .src: funktioniert auch, bevor die Bibliothek geladen ist
+    schreibeDaten();
+  }
+
+  mv.addEventListener('load', () => {
+    const d = mv.getDimensions();
+    const c = mv.getBoundingBoxCenter();
+    // kleinste Ausdehnung = Planetendurchmesser (Saturnringe liegen flach und zählen so nicht mit)
+    mass = { d: Math.min(d.x, d.y, d.z), c };
+    anwenden();
+  });
+
+  mv.addEventListener('error', () => {
+    zeigeFehler(`<strong>Modell nicht gefunden:</strong> <code>${PLANETEN[index].datei}</code>. ` +
+      'Liegt die Datei im Ordner „modelle“ und stimmt der Name genau (Kleinschreibung)?');
+  });
+
+  function abstand() {
+    const r = mv.getBoundingClientRect();
+    return RAHMEN / (Math.tan(FOV / 2 * Math.PI / 180) * Math.min(1, r.width / r.height));
+  }
+
+  function anwenden() {
+    if (!mass) return;
+    const o = mv.getCameraOrbit();
+    const winkel = `${o.theta}rad ${o.phi}rad`;
+    if (modus === 'normiert') {
+      mv.setAttribute('scale', '1 1 1');
+      mv.setAttribute('camera-target', 'auto auto auto');
+      mv.setAttribute('field-of-view', 'auto');
+      mv.setAttribute('camera-orbit', `${winkel} auto`);
+      umriss.hidden = true;
+    } else {
+      // Planet so skalieren, dass Jupiter den Radius 1 hat; Kamera bleibt immer gleich weit weg
+      const s = (PLANETEN[index].durchmesser / ref.durchmesser) * 2 / mass.d;
+      mv.setAttribute('scale', `${s} ${s} ${s}`);
+      mv.setAttribute('camera-target', `${mass.c.x * s}m ${mass.c.y * s}m ${mass.c.z * s}m`);
+      mv.setAttribute('field-of-view', `${FOV}deg`);
+      mv.setAttribute('camera-orbit', `${winkel} ${abstand()}m`);
+      const r = mv.getBoundingClientRect();
+      const px = Math.min(r.width, r.height) / RAHMEN;    // Durchmesser des Jupiter-Umrisses in Pixeln
+      umriss.style.width = umriss.style.height = `${px}px`;
+      document.getElementById('umriss-text').textContent = `Größe von ${REFERENZ}`;
+      umriss.hidden = false;   // bei Jupiter selbst liegt der Umriss genau am Planetenrand (Kontrolle)
+    }
+    if (mv.jumpCameraToGoal) mv.jumpCameraToGoal();
+  }
+
+  function schreibeDaten() {
+    const p = PLANETEN[index];
+    document.getElementById('daten').innerHTML =
+      `<strong>${p.name}</strong> · Ø ${zahl(p.durchmesser, 0)} km · ` +
+      `${zahl(p.durchmesser / erde.durchmesser, 2)} × Erde · ${zahl(p.durchmesser / ref.durchmesser, 3)} × ${REFERENZ}`;
+  }
+
+  function setzeModus(m) {
+    modus = m;
+    document.getElementById('btn-normiert').setAttribute('aria-pressed', m === 'normiert');
+    document.getElementById('btn-vergleich').setAttribute('aria-pressed', m === 'vergleich');
+    anwenden();
+  }
+  document.getElementById('btn-normiert').addEventListener('click', () => setzeModus('normiert'));
+  document.getElementById('btn-vergleich').addEventListener('click', () => setzeModus('vergleich'));
+  window.addEventListener('resize', () => { if (modus === 'vergleich') anwenden(); });
+
+  // Hinweise bei typischen Problemen
+  if (location.protocol === 'file:') {
+    zeigeFehler('<strong>Per Doppelklick geöffnet:</strong> So lädt der Browser keine Modelle. ' +
+      'Bitte die Seite über GitHub Pages öffnen (siehe Anleitung).');
+  } else {
+    Promise.race([customElements.whenDefined('model-viewer'), new Promise(ok => setTimeout(() => ok('zeit'), 8000))])
+      .then(r => { if (r === 'zeit') zeigeFehler('<strong>Die 3D-Anzeige konnte nicht geladen werden.</strong> Besteht eine Internetverbindung?'); });
+  }
+
+  zeigePlanet(index);
+</script>
+</body>
+</html>
