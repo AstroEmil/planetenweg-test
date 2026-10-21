@@ -126,7 +126,7 @@
   const versteckeFehler = () => { fehler.hidden = true; fehler.innerHTML = ''; };
 
   // Übersicht: Knöpfe nach Gruppen (Planeten, Zwergplaneten, Monde)
-  [['Planet', 'Planeten'], ['Zwergplanet', 'Zwergplaneten'], ['Mond', 'Monde']].forEach(([art, titel]) => {
+  [['Sonne', 'Sonne'], ['Planet', 'Planeten'], ['Zwergplanet', 'Zwergplaneten'], ['Mond', 'Monde']].forEach(([art, titel]) => {
     const liste = PLANETEN.map((p, i) => [p, i]).filter(([p]) => (p.art || 'Planet') === art);
     if (!liste.length) return;
     const g = document.createElement('div');
