@@ -1,0 +1,40 @@
+PLANETENWEG – ANLEITUNG
+=======================
+
+Neu in dieser Fassung
+---------------------
+- Zusaetzlich: Erdmond, Ceres, Pluto, Haumea, Makemake, Eris
+- Zoomen: mit zwei Fingern oder dem Mausrad; "Ansicht zurücksetzen" stellt die Startansicht her
+- Groessenvergleich: zusaetzlich eine massstabsgetreue Skizze (Objekt neben Jupiter)
+- Die Seite laedt immer die neueste hochgeladene Datei (kein alter Zwischenspeicher mehr)
+
+
+AKTUALISIEREN
+-------------
+Alle Dateien und Ordner aus diesem Paket hochladen; vorhandene werden ersetzt:
+   index.html, planeten.js, qr.html, Ordner modelle, Ordner infotexte
+Upload-Seite:  https://github.com/IHR-NAME/planetenweg-test/upload/main
+
+ACHTUNG: Ihre eigenen Modelle NICHT mit den Platzhaltern ueberschreiben!
+Entweder vor dem Hochladen Ihre eigenen .glb-Dateien in den Ordner modelle
+dieses Pakets kopieren (gleichen Namen ersetzen), oder nur die neuen
+Platzhalter hochladen: mond, ceres, pluto, haumea, makemake, eris.
+
+
+DATEINAMEN (klein, ohne Umlaute)
+--------------------------------
+   merkur  venus  erde  mond  mars  ceres  jupiter  saturn
+   uranus  neptun  pluto  haumea  makemake  eris
+
+   Modell:     modelle/<name>.glb
+   Infotext:   infotexte/<name>.pdf
+   QR-Code:    https://IHR-NAME.github.io/planetenweg-test/#<name>
+
+QR-Codes fuer alle Stationen:  https://IHR-NAME.github.io/planetenweg-test/qr.html
+
+
+HINWEIS ZU HAUMEA
+-----------------
+Haumea ist laenglich (2322 x 1704 x 1026 km). Die Seite misst bei Haumea die
+laengste Achse des Modells. In Blender also ebenfalls als laenglichen Koerper
+modellieren (oder als Kugel – dann stimmt der Groessenvergleich nur ungefaehr).

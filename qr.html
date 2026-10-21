@@ -66,7 +66,7 @@
                   `<rect width="100%" height="100%" fill="#fff"/><path d="${pfad}" fill="#000"/></svg>`;
       const karte = document.createElement('div');
       karte.className = 'karte';
-      karte.innerHTML = `<div class="klein">Planetenweg · Station</div>
+      karte.innerHTML = `<div class="klein">Planetenweg · ${p.art || "Station"}</div>
         <div class="name">${p.name}</div>
         ${svg}
         <div class="adresse">${adresse}</div>`;

@@ -12,7 +12,7 @@
 <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
 
 <style>
-  /* Layout: eine Spalte – Kopf, (Auswahl nur in der Übersicht), Infotext-Knopf, Bühne, Datenzeile */
+  /* Layout: eine Spalte – Kopf, Auswahl (nur Übersicht), Bedienleiste, Bühne, Größenvergleich, Datenzeile */
   :root {
     --himmel: #0a0d16;
     --flaeche: #141a28;
@@ -20,6 +20,7 @@
     --text: #e9edf5;
     --leise: #95a0b4;
     --akzent: #f2c46d;
+    --planet: #c9d4e8;
     --fehler-bg: #45191c;
     --fehler-rand: #c45a5f;
     --schrift: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -38,33 +39,32 @@
   .kopf small { color: var(--leise); letter-spacing: .08em; text-transform: uppercase; font-size: .75rem; }
   h1 { margin: 0; font-size: 1.6rem; text-wrap: balance; }
 
-  .planeten { display: flex; flex-wrap: wrap; gap: 6px; }
-  .planeten button, .modus button {
+  .auswahl { display: grid; gap: 8px; }
+  .gruppe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .gruppe > span { color: var(--leise); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; width: 100%; }
+  .gruppe button, .modus button, .knopf-leise {
     font: inherit; font-size: .92rem; color: var(--text); background: var(--flaeche);
     border: 1px solid var(--linie); border-radius: 999px; padding: 6px 12px; cursor: pointer;
   }
-  .planeten button[aria-pressed="true"] { border-color: var(--akzent); color: var(--akzent); }
+  .gruppe button[aria-pressed="true"] { border-color: var(--akzent); color: var(--akzent); }
   .leiste { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .modus { display: inline-flex; border: 1px solid var(--linie); border-radius: 999px; padding: 3px; gap: 3px; background: var(--flaeche); }
   .modus button { border: 0; background: transparent; }
   .modus button[aria-pressed="true"] { background: var(--akzent); color: var(--himmel); font-weight: 600; }
+  .knopf-leise { color: var(--leise); }
   .infotext {
-    display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600;
+    display: inline-flex; align-items: center; text-decoration: none; font-weight: 600;
     color: var(--himmel); background: var(--akzent); border-radius: 999px; padding: 8px 16px;
   }
   .infotext-fehlt { color: var(--leise); font-size: .9rem; }
   button:focus-visible, a:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 
-  .buehne { position: relative; border: 1px solid var(--linie); border-radius: 14px; overflow: hidden; background: var(--himmel); }
-  model-viewer { display: block; width: 100%; height: 60vh; min-height: 320px; max-height: 640px; background: var(--himmel); }
-  .umriss {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    border: 1.5px dashed var(--akzent); border-radius: 50%; pointer-events: none; opacity: .75;
-  }
-  .umriss span {
-    position: absolute; left: 50%; top: -1.6em; transform: translateX(-50%);
-    color: var(--akzent); font-size: .8rem; white-space: nowrap;
-  }
+  .buehne { border: 1px solid var(--linie); border-radius: 14px; overflow: hidden; background: var(--himmel); }
+  model-viewer { display: block; width: 100%; height: 58vh; min-height: 320px; max-height: 620px; background: var(--himmel); }
+
+  .vergleich { margin: 0; border: 1px solid var(--linie); border-radius: 14px; padding: 12px; display: grid; gap: 6px; }
+  .vergleich svg { width: 100%; max-width: 420px; height: auto; justify-self: center; display: block; }
+  .vergleich figcaption { color: var(--leise); font-size: .85rem; text-align: center; }
 
   .daten { color: var(--leise); font-size: .95rem; font-variant-numeric: tabular-nums; margin: 0; }
   .daten strong { color: var(--text); font-weight: 600; }
@@ -75,10 +75,10 @@
 <main>
   <header class="kopf">
     <small id="oberzeile">Planetenweg</small>
-    <h1 id="titel">Alle Stationen</h1>
+    <h1 id="titel">Übersicht</h1>
   </header>
 
-  <div class="planeten" id="planeten" aria-label="Station auswählen"></div>
+  <nav class="auswahl" id="auswahl" aria-label="Objekt auswählen"></nav>
 
   <div class="leiste">
     <a class="infotext" id="infotext" href="#" target="_blank" rel="noopener" hidden>Infotext öffnen</a>
@@ -87,98 +87,137 @@
       <button type="button" id="btn-normiert" aria-pressed="true">Normiert</button>
       <button type="button" id="btn-vergleich" aria-pressed="false">Größenvergleich</button>
     </div>
+    <button type="button" class="knopf-leise" id="btn-reset">Ansicht zurücksetzen</button>
   </div>
 
   <div class="fehler" id="fehler" hidden></div>
 
   <div class="buehne">
     <model-viewer id="viewer"
-      alt="3D-Modell des Planeten"
-      camera-controls disable-zoom disable-pan touch-action="pan-y"
-      interaction-prompt="auto" environment-image="neutral" shadow-intensity="0"
-      min-camera-orbit="-Infinity 22.5deg 0m" max-camera-orbit="Infinity 157.5deg 2000m"
-      min-field-of-view="10deg" max-field-of-view="45deg">
+      alt="3D-Modell"
+      camera-controls disable-pan touch-action="pan-y"
+      interaction-prompt="auto" environment-image="neutral" shadow-intensity="0">
     </model-viewer>
-    <div class="umriss" id="umriss" hidden><span id="umriss-text">Größe von Jupiter</span></div>
   </div>
 
+  <figure class="vergleich" id="vergleich" hidden>
+    <svg id="vergleich-svg" viewBox="0 0 320 160" role="img" aria-label="Größenvergleich"></svg>
+    <figcaption id="vergleich-text"></figcaption>
+  </figure>
+
   <p class="daten" id="daten"></p>
-  <p class="fuss">Zum Drehen wischen oder mit der Maus ziehen.</p>
+  <p class="fuss">Drehen: wischen oder mit der Maus ziehen · Zoomen: mit zwei Fingern oder dem Mausrad</p>
 </main>
 
 <script>
   // Die Liste der Stationen steht in planeten.js.
-  const RAHMEN = 2.1;   // sichtbarer Bereich im Größenvergleich, in Jupiter-Radien (Platz für Saturnringe)
+  const RAHMEN = 2.1;   // Startansicht im Größenvergleich: sichtbarer Bereich in Jupiter-Radien (Platz für Saturnringe)
   const FOV = 30;       // fester Bildwinkel im Größenvergleich (Grad)
 
   const $ = (id) => document.getElementById(id);
-  const mv = $('viewer'), umriss = $('umriss'), fehler = $('fehler'), leiste = $('planeten');
+  const mv = $('viewer'), fehler = $('fehler'), auswahl = $('auswahl');
   const ref = PLANETEN.find(p => p.id === REFERENZ);
   const erde = PLANETEN.find(p => p.id === 'erde');
   const zahl = (x, n) => x.toLocaleString('de-DE', { minimumFractionDigits: n, maximumFractionDigits: n });
-  const modellDatei = (p) => (window.EINGEBETTET && EINGEBETTET[p.id]) || `modelle/${p.id}.glb`;
-  const infotextDatei = (p) => `infotexte/${p.id}.pdf`;
-  let index = 0, modus = 'normiert', mass = null;
+  let index = 0, modus = 'normiert', mass = null, ladeNr = 0, breite = 0;
+  const knoepfe = [];
 
   const zeigeFehler = (html) => { fehler.innerHTML = html; fehler.hidden = false; };
+  const versteckeFehler = () => { fehler.hidden = true; fehler.innerHTML = ''; };
 
-  PLANETEN.forEach((p, i) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.textContent = p.name;
-    b.addEventListener('click', () => zeigePlanet(i));
-    leiste.appendChild(b);
+  // Übersicht: Knöpfe nach Gruppen (Planeten, Zwergplaneten, Monde)
+  [['Planet', 'Planeten'], ['Zwergplanet', 'Zwergplaneten'], ['Mond', 'Monde']].forEach(([art, titel]) => {
+    const liste = PLANETEN.map((p, i) => [p, i]).filter(([p]) => (p.art || 'Planet') === art);
+    if (!liste.length) return;
+    const g = document.createElement('div');
+    g.className = 'gruppe';
+    g.innerHTML = `<span>${titel}</span>`;
+    liste.forEach(([p, i]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = p.name;
+      b.addEventListener('click', () => zeigePlanet(i));
+      knoepfe[i] = b; g.appendChild(b);
+    });
+    auswahl.appendChild(g);
   });
+
+  // Prüft, ob eine Datei online liegt, und holt ihre Fassung (damit nie eine alte Datei aus dem Zwischenspeicher erscheint)
+  async function pruefe(pfad) {
+    try {
+      const r = await fetch(pfad, { method: 'HEAD', cache: 'no-store' });
+      const v = (r.headers.get('etag') || r.headers.get('last-modified') || '').replace(/[^A-Za-z0-9]/g, '');
+      return { da: r.ok, status: r.status, v };
+    } catch (e) { return { da: false, status: 0, v: '' }; }
+  }
+  const mitFassung = (pfad, v) => v ? `${pfad}?v=${v}` : pfad;
 
   // Welche Station? Steht im QR-Code hinter dem #, z. B. .../#erde
   function start() {
+    versteckeFehler();
     const id = decodeURIComponent(location.hash.slice(1)).trim().toLowerCase();
     const i = PLANETEN.findIndex(p => p.id === id);
     const station = i >= 0;
-    leiste.hidden = station;                       // an einer Station: keine Auswahl, nur dieser Planet
-    $('oberzeile').textContent = station ? 'Planetenweg · Station' : 'Planetenweg · Übersicht';
-    if (id && !station) zeigeFehler(`<strong>Unbekannte Station „${id}“.</strong> Stimmt der QR-Code?`);
+    auswahl.hidden = station;                      // an einer Station: keine Auswahl, nur dieses Objekt
     zeigePlanet(station ? i : Math.max(0, PLANETEN.findIndex(p => p.id === START)));
+    if (id && !station) zeigeFehler(`<strong>Unbekannte Station „${id}“.</strong> Stimmt der QR-Code?`);
   }
 
-  function zeigePlanet(i) {
-    index = i; mass = null; umriss.hidden = true;
-    if (!fehler.textContent.startsWith('Unbekannte')) fehler.hidden = true;
+  async function zeigePlanet(i) {
+    index = i; mass = null; const nr = ++ladeNr;
     const p = PLANETEN[i];
-    [...leiste.children].forEach((b, k) => b.setAttribute('aria-pressed', k === i));
+    if (!fehler.innerHTML.includes('Unbekannte')) versteckeFehler();
+    knoepfe.forEach((b, k) => b && b.setAttribute('aria-pressed', k === i));
     $('titel').textContent = p.name;
+    $('oberzeile').textContent = auswahl.hidden ? `Planetenweg · ${p.art || 'Planet'}` : 'Planetenweg · Übersicht';
     document.title = `${p.name} – Planetenweg`;
     mv.setAttribute('alt', `3D-Modell: ${p.name}`);
-    mv.setAttribute('scale', '1 1 1');            // erst unverändert laden und messen
+    // erst unverändert laden und messen
+    mv.setAttribute('scale', '1 1 1');
     mv.setAttribute('camera-target', 'auto auto auto');
     mv.setAttribute('field-of-view', 'auto');
     mv.setAttribute('camera-orbit', '0deg 75deg auto');
-    mv.setAttribute('src', modellDatei(p));
+    ['min-camera-orbit', 'max-camera-orbit', 'min-field-of-view', 'max-field-of-view'].forEach(a => mv.removeAttribute(a));
     schreibeDaten();
-    pruefeInfotext(p);
+    pruefeInfotext(p, nr);
+
+    if (window.EINGEBETTET && EINGEBETTET[p.id]) { mv.setAttribute('src', EINGEBETTET[p.id]); return; }
+    const pfad = `modelle/${p.id}.glb`;
+    const r = await pruefe(pfad);
+    if (nr !== ladeNr) return;                     // inzwischen anderes Objekt gewählt
+    if (r.status === 404) {
+      mv.removeAttribute('src');
+      zeigeFehler(`<strong>Datei nicht gefunden:</strong> <code>${pfad}</code>. ` +
+        'Liegt sie im Ordner „modelle“ und stimmt der Name genau? Nach dem Hochladen bis zu 3 Minuten warten.');
+      return;
+    }
+    mv.setAttribute('src', mitFassung(pfad, r.v));
   }
 
   // Infotext-Knopf nur zeigen, wenn die PDF wirklich hochgeladen ist
-  async function pruefeInfotext(p) {
+  async function pruefeInfotext(p, nr) {
     const a = $('infotext'), fehlt = $('infotext-fehlt');
     a.hidden = true; fehlt.hidden = true;
-    let da = false;
-    try { da = (await fetch(infotextDatei(p), { method: 'HEAD', cache: 'no-store' })).ok; } catch (e) { da = false; }
-    if (PLANETEN[index] !== p) return;            // inzwischen anderer Planet gewählt
-    a.href = infotextDatei(p);
-    a.hidden = !da; fehlt.hidden = da;
+    const pfad = `infotexte/${p.id}.pdf`;
+    const r = await pruefe(pfad);
+    if (nr !== ladeNr) return;
+    a.href = mitFassung(pfad, r.v);
+    a.hidden = !r.da; fehlt.hidden = r.da;
   }
 
   mv.addEventListener('load', () => {
-    const d = mv.getDimensions();
-    const c = mv.getBoundingBoxCenter();
-    // kleinste Ausdehnung = Planetendurchmesser (Saturnringe liegen flach und zählen so nicht mit)
-    mass = { d: Math.min(d.x, d.y, d.z), c };
-    anwenden();
+    const d = mv.getDimensions(), c = mv.getBoundingBoxCenter();
+    const p = PLANETEN[index];
+    // Durchmesser im Modell: kleinste Ausdehnung (Saturnringe zählen so nicht mit), bei länglichen Körpern die längste
+    const masse = [d.x, d.y, d.z];
+    mass = { d: p.messen === 'laengste' ? Math.max(...masse) : Math.min(...masse), c };
+    anwenden(true);
   });
 
-  mv.addEventListener('error', () => {
-    zeigeFehler(`<strong>Modell nicht gefunden:</strong> <code>modelle/${PLANETEN[index].id}.glb</code>. ` +
-      'Liegt die Datei im Ordner „modelle“ und stimmt der Name genau (Kleinschreibung)?');
+  mv.addEventListener('error', (ev) => {
+    const technik = ev.detail && ev.detail.sourceError ? String(ev.detail.sourceError.message || ev.detail.sourceError) : '';
+    zeigeFehler(`<strong>Modell konnte nicht geladen werden:</strong> <code>modelle/${PLANETEN[index].id}.glb</code>. ` +
+      'Bitte Internetverbindung prüfen. Beim Export aus Blender: Format „glTF-Binär (.glb)“, Komprimierung aus.' +
+      (technik ? `<br><small>Technischer Hinweis: ${technik.replace(/</g, '&lt;').slice(0, 200)}</small>` : ''));
   });
 
   function abstand() {
@@ -186,36 +225,58 @@
     return RAHMEN / (Math.tan(FOV / 2 * Math.PI / 180) * Math.min(1, r.width / r.height));
   }
 
-  function anwenden() {
+  // zuruecksetzen = true: Startansicht (Blickwinkel und Zoom); sonst bleibt der Blickwinkel erhalten
+  function anwenden(zuruecksetzen) {
     if (!mass) return;
     const o = mv.getCameraOrbit();
-    const winkel = `${o.theta}rad ${o.phi}rad`;
+    const winkel = zuruecksetzen ? '0deg 75deg' : `${o.theta}rad ${o.phi}rad`;
+    const p = PLANETEN[index];
     if (modus === 'normiert') {
       mv.setAttribute('scale', '1 1 1');
       mv.setAttribute('camera-target', 'auto auto auto');
+      ['min-camera-orbit', 'max-camera-orbit', 'min-field-of-view', 'max-field-of-view'].forEach(a => mv.removeAttribute(a));
       mv.setAttribute('field-of-view', 'auto');
       mv.setAttribute('camera-orbit', `${winkel} auto`);
-      umriss.hidden = true;
+      $('vergleich').hidden = true;
     } else {
-      // Planet so skalieren, dass Jupiter den Radius 1 hat; Kamera bleibt immer gleich weit weg
-      const s = (PLANETEN[index].durchmesser / ref.durchmesser) * 2 / mass.d;
+      // Objekt so skalieren, dass Jupiter den Radius 1 hat; die Startansicht ist für alle Objekte gleich weit weg
+      const r = p.durchmesser / ref.durchmesser;          // Radius des Objekts in Jupiter-Radien
+      const s = r * 2 / mass.d;
+      const R = abstand();
       mv.setAttribute('scale', `${s} ${s} ${s}`);
       mv.setAttribute('camera-target', `${mass.c.x * s}m ${mass.c.y * s}m ${mass.c.z * s}m`);
+      mv.setAttribute('min-camera-orbit', `-Infinity 22.5deg ${Math.max(r * 2.5, 0.06)}m`);
+      mv.setAttribute('max-camera-orbit', `Infinity 157.5deg ${R * 1.5}m`);
+      mv.setAttribute('min-field-of-view', '10deg');
+      mv.setAttribute('max-field-of-view', '45deg');
       mv.setAttribute('field-of-view', `${FOV}deg`);
-      mv.setAttribute('camera-orbit', `${winkel} ${abstand()}m`);
-      const r = mv.getBoundingClientRect();
-      const px = Math.min(r.width, r.height) / RAHMEN;    // Durchmesser des Jupiter-Umrisses in Pixeln
-      umriss.style.width = umriss.style.height = `${px}px`;
-      $('umriss-text').textContent = `Größe von ${ref.name}`;
-      umriss.hidden = false;   // bei Jupiter selbst liegt der Umriss genau am Planetenrand (Kontrolle)
+      mv.setAttribute('camera-orbit', `${winkel} ${R}m`);
+      zeichneVergleich();
+      $('vergleich').hidden = false;
     }
     if (mv.jumpCameraToGoal) mv.jumpCameraToGoal();
+  }
+
+  // Maßstabsgetreue Skizze: Jupiter und das gewählte Objekt nebeneinander
+  function zeichneVergleich() {
+    const p = PLANETEN[index], D = 120, y = 72;
+    const d = Math.max(D * p.durchmesser / ref.durchmesser, 1.5);
+    const kreisRef = `<circle cx="${p === ref ? 160 : 92}" cy="${y}" r="${D / 2}" fill="none" stroke="var(--akzent)" stroke-width="1.5" stroke-dasharray="5 4"/>` +
+      `<text x="${p === ref ? 160 : 92}" y="150" text-anchor="middle" fill="var(--leise)" font-size="12">${ref.name}</text>`;
+    const kreisP = p === ref ? '' :
+      `<circle cx="236" cy="${y}" r="${d / 2}" fill="var(--planet)"/>` +
+      `<text x="236" y="150" text-anchor="middle" fill="var(--text)" font-size="12">${p.name}</text>`;
+    $('vergleich-svg').innerHTML = kreisRef + kreisP;
+    $('vergleich-text').textContent = p === ref
+      ? `Bezugsgröße: ${ref.name}`
+      : `Maßstabsgetreu: Der Durchmesser von ${ref.name} ist ${zahl(ref.durchmesser / p.durchmesser, 1)}-mal so groß wie der von ${p.name}. ` +
+        'Im 3D-Bild gilt der Maßstab in der Startansicht („Ansicht zurücksetzen“).';
   }
 
   function schreibeDaten() {
     const p = PLANETEN[index];
     $('daten').innerHTML =
-      `<strong>${p.name}</strong> · Ø ${zahl(p.durchmesser, 0)} km · ` +
+      `<strong>${p.name}</strong> · Ø ${zahl(p.durchmesser, 0)} km${p.messen === 'laengste' ? ' (längste Achse)' : ''} · ` +
       `${zahl(p.durchmesser / erde.durchmesser, 2)} × Erde · ${zahl(p.durchmesser / ref.durchmesser, 3)} × ${ref.name}`;
   }
 
@@ -223,14 +284,21 @@
     modus = m;
     $('btn-normiert').setAttribute('aria-pressed', m === 'normiert');
     $('btn-vergleich').setAttribute('aria-pressed', m === 'vergleich');
-    anwenden();
+    anwenden(false);
   }
   $('btn-normiert').addEventListener('click', () => setzeModus('normiert'));
   $('btn-vergleich').addEventListener('click', () => setzeModus('vergleich'));
-  window.addEventListener('resize', () => { if (modus === 'vergleich') anwenden(); });
-  window.addEventListener('hashchange', () => { fehler.hidden = true; fehler.textContent = ''; start(); });
+  $('btn-reset').addEventListener('click', () => anwenden(true));
+  // nur bei echter Breitenänderung neu berechnen (nicht, wenn am Handy die Adresszeile ein- und ausfährt)
+  window.addEventListener('resize', () => {
+    const w = mv.getBoundingClientRect().width;
+    if (modus === 'vergleich' && Math.abs(w - breite) > 2) anwenden(false);
+    breite = w;
+  });
+  window.addEventListener('hashchange', start);
 
   start();
+  breite = mv.getBoundingClientRect().width;
 
   if (location.protocol === 'file:') {
     zeigeFehler('<strong>Per Doppelklick geöffnet:</strong> So lädt der Browser keine Modelle. ' +
@@ -239,7 +307,6 @@
     Promise.race([customElements.whenDefined('model-viewer'), new Promise(ok => setTimeout(() => ok('zeit'), 8000))])
       .then(r => { if (r === 'zeit') zeigeFehler('<strong>Die 3D-Anzeige konnte nicht geladen werden.</strong> Besteht eine Internetverbindung?'); });
   }
-
 </script>
 </body>
 </html>
