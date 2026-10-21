@@ -14,6 +14,7 @@
 // NASA Science (Ceres: Radius 476 km, Makemake: Radius 715 km);
 // Eris: Sicardy et al. 2011, Nature 478; Haumea: Ortiz et al. 2017, Nature 550 (2322 x 1704 x 1026 km).
 const PLANETEN = [
+  { id: 'sonne',    name: 'Sonne',    art: 'Sonne',       durchmesser: 14000000 },
   { id: 'merkur',   name: 'Merkur',   art: 'Planet',      durchmesser: 4879 },
   { id: 'venus',    name: 'Venus',    art: 'Planet',      durchmesser: 12104 },
   { id: 'erde',     name: 'Erde',     art: 'Planet',      durchmesser: 12756 },
